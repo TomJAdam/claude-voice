@@ -7,17 +7,17 @@ Argument: $ARGUMENTS
 **Content selection** (can combine with speed/voice flags):
 - No argument: record state and run:
   ```bash
-  SD=/tmp/claude-say-$PPID; date +%s > $SD/start.txt && echo "RATE" > $SD/rate.txt && rm -f $SD/offset.txt && cat $SD/last.txt | say [FLAGS] &
+  SD=/tmp/claude-say-$PPID; mkdir -p $SD; date +%s > $SD/start.txt && echo "RATE" > $SD/rate.txt && rm -f $SD/offset.txt && cat $SD/last.txt | say [FLAGS] &
   ```
   Replace RATE with the numeric rate (175 if no rate flag, 130 for slow, 250 for fast, or the custom number).
 - `again` or `repeat`: same as no argument — record state, run same command. If file missing, do nothing.
 - `pause`: kill say and save word offset based on elapsed time:
   ```bash
-  SD=/tmp/claude-say-$PPID; START=$(cat $SD/start.txt 2>/dev/null || echo $(date +%s)); RATE=$(cat $SD/rate.txt 2>/dev/null || echo 175); NOW=$(date +%s); ELAPSED=$((NOW - START)); WORDS=$((ELAPSED * RATE / 60)); echo $WORDS > $SD/offset.txt; killall say 2>/dev/null; true
+  SD=/tmp/claude-say-$PPID; mkdir -p $SD; START=$(cat $SD/start.txt 2>/dev/null || echo $(date +%s)); RATE=$(cat $SD/rate.txt 2>/dev/null || echo 175); NOW=$(date +%s); ELAPSED=$((NOW - START)); WORDS=$((ELAPSED * RATE / 60)); echo $WORDS > $SD/offset.txt; killall say 2>/dev/null; true
   ```
 - `resume`: restart from saved word offset:
   ```bash
-  SD=/tmp/claude-say-$PPID; OFFSET=$(cat $SD/offset.txt 2>/dev/null || echo 0); RATE=$(cat $SD/rate.txt 2>/dev/null || echo 175); date +%s > $SD/start.txt; awk -v skip=$OFFSET 'BEGIN{w=0}{for(i=1;i<=NF;i++){if(w>=skip)printf "%s ",$i; w++}}END{print ""}' $SD/last.txt | say -r $RATE &
+  SD=/tmp/claude-say-$PPID; mkdir -p $SD; OFFSET=$(cat $SD/offset.txt 2>/dev/null || echo 0); RATE=$(cat $SD/rate.txt 2>/dev/null || echo 175); date +%s > $SD/start.txt; awk -v skip=$OFFSET 'BEGIN{w=0}{for(i=1;i<=NF;i++){if(w>=skip)printf "%s ",$i; w++}}END{print ""}' $SD/last.txt | say -r $RATE &
   ```
   Speed/voice flags override the saved rate if provided.
 - `full`: speak all assistant text responses since the last user message, concatenated. Claude extracts and preprocesses the text, then runs the full pipeline below.
@@ -37,7 +37,7 @@ Flags combine freely: `full slow`, `voice Alex fast`, `again slow`, `resume fast
 **Full pipeline** (used only for `full`, `code`, `summary`):
 
 ```bash
-SD=/tmp/claude-say-$PPID; echo "$TEXT" | sed \
+SD=/tmp/claude-say-$PPID; mkdir -p $SD; echo "$TEXT" | sed \
   -e 's/\[HIGH\]/High,/g' -e 's/\[MEDIUM\]/Medium,/g' -e 's/\[LOW\]/Low,/g' \
   -e 's/__c//g' -e 's/__/  /g' -e 's/<[^>]*>//g' \
   -e 's/@//g' -e 's/`//g' -e 's/—/, /g' \
