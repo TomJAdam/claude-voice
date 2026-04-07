@@ -12,10 +12,12 @@ cp commands/say.md "$COMMANDS_DIR/say.md"
 cp commands/stop.md "$COMMANDS_DIR/stop.md"
 echo "  Commands installed."
 
-# Install save script
+# Install scripts
 cp scripts/claude-voice-save.sh "$HOME/.claude/claude-voice-save.sh"
+cp scripts/claude-voice-intercept.sh "$HOME/.claude/claude-voice-intercept.sh"
 chmod +x "$HOME/.claude/claude-voice-save.sh"
-echo "  Save script installed."
+chmod +x "$HOME/.claude/claude-voice-intercept.sh"
+echo "  Scripts installed."
 
 # Add Stop hook to settings.json
 if ! command -v jq &>/dev/null; then
@@ -34,17 +36,21 @@ if ! command -v jq &>/dev/null; then
   echo '  }'
   echo ""
 else
-  HOOK='{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash ~/.claude/claude-voice-save.sh","async":true}]}]}}'
+  STOP_HOOK='{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash ~/.claude/claude-voice-save.sh","async":true}]}]}}'
+  PROMPT_HOOK='{"hooks":{"UserPromptSubmit":[{"hooks":[{"type":"command","command":"bash ~/.claude/claude-voice-intercept.sh"}]}]}}'
 
   if [ ! -f "$SETTINGS" ]; then
-    echo "$HOOK" | jq '.' > "$SETTINGS"
+    echo '{}' | jq --argjson s "$STOP_HOOK" --argjson p "$PROMPT_HOOK" \
+      '.hooks.Stop = $s.hooks.Stop | .hooks.UserPromptSubmit = $p.hooks.UserPromptSubmit' \
+      > "$SETTINGS"
   else
-    # Merge hook into existing settings without overwriting anything
-    jq --argjson hook "$HOOK" \
-      '.hooks.Stop = (.hooks.Stop // []) + $hook.hooks.Stop' \
+    # Merge hooks into existing settings without overwriting anything
+    jq --argjson s "$STOP_HOOK" --argjson p "$PROMPT_HOOK" \
+      '.hooks.Stop = (.hooks.Stop // []) + $s.hooks.Stop
+       | .hooks.UserPromptSubmit = (.hooks.UserPromptSubmit // []) + $p.hooks.UserPromptSubmit' \
       "$SETTINGS" > "$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
   fi
-  echo "  Stop hook added to settings.json."
+  echo "  Hooks added to settings.json."
 fi
 
 echo ""
