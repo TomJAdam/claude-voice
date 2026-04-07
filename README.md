@@ -96,3 +96,19 @@ A Claude Code Stop hook runs `claude-voice-save.sh` silently after every turn. T
 When you type `/say`, Claude reads from that file and pipes it to `say` — zero conversation scanning, zero extra tokens.
 
 The `full`, `code`, and `summary` flags still use Claude for extraction since they require understanding of conversation context.
+
+## Text preprocessing
+
+`say` struggles with code identifiers and technical terms out of the box. claude-voice preprocesses text before speaking to make it significantly more natural:
+
+| Raw | Spoken as |
+|---|---|
+| `getUsersDaysOffMapStartingAt` | "get Users Days Off Map Starting At" |
+| `Complete_Day_Off__c` | "Complete Day Off" |
+| `List<Complete_Day_Off__c>` | "List" |
+| `calculatePauseExpiryWithinCompleteUserAvailability` | "calculate Pause Expiry Within Complete User Availability" |
+| `[HIGH]` | "High," |
+| `—` | natural pause |
+| backticks, `@param` | cleaned up |
+
+This makes responses with Apex, Java, JavaScript, or any camelCase/snake_case code significantly more listenable.
