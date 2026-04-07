@@ -6,7 +6,7 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT="$REPO_DIR/scripts/claude-voice-save.sh"
 FIXTURE="$REPO_DIR/tests/fixtures/mock-transcript.jsonl"
 TMPDIR_BASE=$(mktemp -d)
-trap 'rm -rf "$TMPDIR_BASE"' EXIT
+trap 'rm -rf "$TMPDIR_BASE" "/tmp/claude-say-$$"' EXIT
 
 pass() { echo "  PASS: $1"; }
 fail() { echo "  FAIL: $1 — $2"; }
@@ -127,10 +127,12 @@ cp "$FIXTURE" "$FAKE_PROJECT/${FAKE_SESSION}.jsonl"
 export HOME="$FAKE_HOME"
 
 # Run the save script with the fake session ID
+# The script uses $PPID for the session dir; when run via bash, PPID = this shell's PID
 echo "{\"session_id\":\"$FAKE_SESSION\"}" | bash "$SCRIPT"
+SAVE_DIR="/tmp/claude-say-$$"
 
-if [ -f /tmp/claude-say-last.txt ]; then
-  CONTENT=$(cat /tmp/claude-say-last.txt)
+if [ -f "$SAVE_DIR/last.txt" ]; then
+  CONTENT=$(cat "$SAVE_DIR/last.txt")
   # Should contain the LAST assistant message, preprocessed
   if echo "$CONTENT" | grep -q "get User Name"; then
     pass "Extracts last assistant message with preprocessing"
@@ -150,13 +152,13 @@ if [ -f /tmp/claude-say-last.txt ]; then
     fail "Transcript __c" "found __c in output"
   fi
 else
-  fail "Transcript extraction" "no output file created"
+  fail "Transcript extraction" "no output file created at $SAVE_DIR/last.txt"
   fail "Last-only extraction" "skipped (no file)"
   fail "Transcript __c" "skipped (no file)"
 fi
 
 # --- Test: Atomic write (tmp file not left behind) ---
-if [ ! -f /tmp/claude-say-last.txt.tmp ]; then
+if [ ! -f "$SAVE_DIR/last.txt.tmp" ]; then
   pass "Atomic write: no .tmp file left behind"
 else
   fail "Atomic write" ".tmp file still exists"

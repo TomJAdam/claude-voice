@@ -8,10 +8,9 @@ echo "Uninstalling claude-voice..."
 rm -f "$COMMANDS_DIR/say.md"
 rm -f "$COMMANDS_DIR/stop.md"
 rm -f "$HOME/.claude/claude-voice-save.sh"
-rm -f /tmp/claude-say-last.txt
-rm -f /tmp/claude-say-start.txt
-rm -f /tmp/claude-say-rate.txt
-rm -f /tmp/claude-say-offset.txt
+# Clean up session directories and legacy flat files
+rm -rf /tmp/claude-say-*/
+rm -f /tmp/claude-say-last.txt /tmp/claude-say-start.txt /tmp/claude-say-rate.txt /tmp/claude-say-offset.txt
 
 # Remove Stop hook from settings.json
 if command -v jq &>/dev/null && [ -f "$SETTINGS" ]; then

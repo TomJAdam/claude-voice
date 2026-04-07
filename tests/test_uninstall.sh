@@ -22,8 +22,11 @@ setup_and_uninstall() {
 # --- Test: Removes command files ---
 FAKE_HOME=$(setup_and_uninstall)
 export HOME="$FAKE_HOME"
-# Create state files in the real /tmp that uninstall targets
-ORIG_LAST=$(cat /tmp/claude-say-last.txt 2>/dev/null)
+# Create session directories and legacy flat files that uninstall should clean
+mkdir -p /tmp/claude-say-12345
+echo "test" > /tmp/claude-say-12345/last.txt
+echo "test" > /tmp/claude-say-12345/start.txt
+# Also create legacy flat files for backwards compat
 echo "test" > /tmp/claude-say-last.txt
 echo "test" > /tmp/claude-say-start.txt
 echo "test" > /tmp/claude-say-rate.txt
@@ -43,15 +46,20 @@ else
   fail "Remove save script" "file still exists"
 fi
 
-# --- Test: Removes temp state files ---
+# --- Test: Removes session directories ---
+if [ ! -d /tmp/claude-say-12345 ]; then
+  pass "Removes session directories"
+else
+  fail "Remove session dirs" "directory still exists"
+fi
+
+# --- Test: Removes legacy flat files ---
 if [ ! -f /tmp/claude-say-last.txt ] && [ ! -f /tmp/claude-say-start.txt ] && \
    [ ! -f /tmp/claude-say-rate.txt ] && [ ! -f /tmp/claude-say-offset.txt ]; then
-  pass "Removes all temp state files"
+  pass "Removes legacy temp files"
 else
-  fail "Remove temp files" "some files remain"
+  fail "Remove legacy files" "some files remain"
 fi
-# Restore original last.txt if it existed
-[ -n "$ORIG_LAST" ] && echo "$ORIG_LAST" > /tmp/claude-say-last.txt
 
 # --- Test: Removes hook from settings.json ---
 HOOK_COUNT=$(jq '.hooks.Stop // [] | length' "$FAKE_HOME/.claude/settings.json" 2>/dev/null)
