@@ -55,6 +55,8 @@ Then **restart Claude Code** (or open `/hooks`) to activate the Stop hook.
 | `/say summary` | Speak a 2–3 sentence summary |
 | `/say code` | Speak only code blocks |
 | `/say again` | Repeat the last spoken text |
+| `/say pause` | Pause at current position |
+| `/say resume` | Resume from where it paused |
 
 ### Speed flags
 
@@ -80,6 +82,7 @@ say -v ?
 /say summary fast
 /say full voice Alex fast
 /say again fast
+/say resume fast
 ```
 
 ### `/stop` — stop speaking
