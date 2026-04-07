@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 COMMANDS_DIR="$HOME/.claude/commands"
 SETTINGS="$HOME/.claude/settings.json"
@@ -8,16 +7,14 @@ echo "Installing claude-voice..."
 
 # Install command files
 mkdir -p "$COMMANDS_DIR"
-cp commands/say.md "$COMMANDS_DIR/say.md"
-cp commands/stop.md "$COMMANDS_DIR/stop.md"
+cp -f commands/say.md "$COMMANDS_DIR/say.md" 2>/dev/null || cp commands/say.md "$COMMANDS_DIR/say.md"
+cp -f commands/stop.md "$COMMANDS_DIR/stop.md" 2>/dev/null || cp commands/stop.md "$COMMANDS_DIR/stop.md"
 echo "  Commands installed."
 
-# Install scripts
-cp scripts/claude-voice-save.sh "$HOME/.claude/claude-voice-save.sh"
-cp scripts/claude-voice-intercept.sh "$HOME/.claude/claude-voice-intercept.sh"
+# Install save script
+cp -f scripts/claude-voice-save.sh "$HOME/.claude/claude-voice-save.sh" 2>/dev/null || cp scripts/claude-voice-save.sh "$HOME/.claude/claude-voice-save.sh"
 chmod +x "$HOME/.claude/claude-voice-save.sh"
-chmod +x "$HOME/.claude/claude-voice-intercept.sh"
-echo "  Scripts installed."
+echo "  Save script installed."
 
 # Add Stop hook to settings.json
 if ! command -v jq &>/dev/null; then
@@ -29,28 +26,27 @@ if ! command -v jq &>/dev/null; then
   echo '    "Stop": [{'
   echo '      "hooks": [{'
   echo '        "type": "command",'
-  echo '        "command": "bash ~/.claude/claude-voice-save.sh",'
-  echo '        "async": true'
+  echo '        "command": "bash ~/.claude/claude-voice-save.sh"'
   echo '      }]'
   echo '    }]'
   echo '  }'
   echo ""
 else
-  STOP_HOOK='{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash ~/.claude/claude-voice-save.sh","async":true}]}]}}'
-  PROMPT_HOOK='{"hooks":{"UserPromptSubmit":[{"hooks":[{"type":"command","command":"bash ~/.claude/claude-voice-intercept.sh"}]}]}}'
+  HOOK_CMD="bash ~/.claude/claude-voice-save.sh"
 
   if [ ! -f "$SETTINGS" ]; then
-    echo '{}' | jq --argjson s "$STOP_HOOK" --argjson p "$PROMPT_HOOK" \
-      '.hooks.Stop = $s.hooks.Stop | .hooks.UserPromptSubmit = $p.hooks.UserPromptSubmit' \
+    # Create new settings with hook
+    jq -n --arg cmd "$HOOK_CMD" \
+      '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":$cmd}]}]}}' \
       > "$SETTINGS"
   else
-    # Merge hooks into existing settings without overwriting anything
-    jq --argjson s "$STOP_HOOK" --argjson p "$PROMPT_HOOK" \
-      '.hooks.Stop = (.hooks.Stop // []) + $s.hooks.Stop
-       | .hooks.UserPromptSubmit = (.hooks.UserPromptSubmit // []) + $p.hooks.UserPromptSubmit' \
-      "$SETTINGS" > "$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
+    # Remove any existing claude-voice hooks first, then add fresh
+    jq --arg cmd "$HOOK_CMD" '
+      .hooks.Stop = ([(.hooks.Stop // [])[] | select(.hooks[].command | contains("claude-voice") | not)]
+        + [{"hooks":[{"type":"command","command":$cmd}]}])
+    ' "$SETTINGS" > "$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
   fi
-  echo "  Hooks added to settings.json."
+  echo "  Stop hook added to settings.json."
 fi
 
 echo ""
