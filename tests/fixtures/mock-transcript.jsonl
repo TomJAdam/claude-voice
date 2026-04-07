@@ -1,0 +1,4 @@
+{"type":"user","message":{"content":[{"type":"text","text":"What does getUserName do?"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"The first response you should not see."}]}}
+{"type":"user","message":{"content":[{"type":"text","text":"Tell me about the Account__c field"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"The getUserName function retrieves the Account__c field from <code>SalesforceAPI</code>. It uses camelCase naming — specifically getHTTPResponse — and returns the Complete_Day_Off__c value."}]}}
