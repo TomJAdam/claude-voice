@@ -29,9 +29,8 @@ The `install.sh` script adds the hook automatically. **Do not skip it.**
 ## Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/TomJAdam/claude-voice.git
 cd claude-voice
-chmod +x install.sh
 ./install.sh
 ```
 
