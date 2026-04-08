@@ -117,44 +117,34 @@ else
   fail "Priority MEDIUM" "got: '$RESULT'"
 fi
 
-# --- Test: Transcript extraction (full pipeline) ---
-# Set up a fake session with the mock transcript
-FAKE_HOME="$TMPDIR_BASE/home_$$"
-FAKE_SESSION="test-session-$$"
-FAKE_PROJECT="$FAKE_HOME/.claude/projects/test"
-mkdir -p "$FAKE_PROJECT"
-cp "$FIXTURE" "$FAKE_PROJECT/${FAKE_SESSION}.jsonl"
-export HOME="$FAKE_HOME"
-
-# Run the save script with the fake session ID
-# The script uses $PPID for the session dir; when run via bash, PPID = this shell's PID
-echo "{\"session_id\":\"$FAKE_SESSION\"}" | bash "$SCRIPT"
+# --- Test: Extracts last_assistant_message with preprocessing ---
 SAVE_DIR="/tmp/claude-say-$$"
+TEST_MSG="The getUserName function retrieves the Account__c field from <code>SalesforceAPI</code>. It uses camelCase naming — specifically getHTTPResponse — and returns the Complete_Day_Off__c value."
+echo "{\"last_assistant_message\":\"$TEST_MSG\"}" | bash "$SCRIPT"
 
 if [ -f "$SAVE_DIR/last.txt" ]; then
   CONTENT=$(cat "$SAVE_DIR/last.txt")
-  # Should contain the LAST assistant message, preprocessed
   if echo "$CONTENT" | grep -q "get User Name"; then
-    pass "Extracts last assistant message with preprocessing"
+    pass "Extracts last_assistant_message with preprocessing"
   else
-    fail "Transcript extraction" "content: '$CONTENT'"
-  fi
-  # Should NOT contain the first assistant message
-  if ! echo "$CONTENT" | grep -q "first response"; then
-    pass "Only extracts last assistant message (not earlier ones)"
-  else
-    fail "Last-only extraction" "found first response in output"
+    fail "Message extraction" "content: '$CONTENT'"
   fi
   # Should have Salesforce __c removed
   if ! echo "$CONTENT" | grep -q "__c"; then
-    pass "Transcript: Salesforce __c stripped"
+    pass "Salesforce __c stripped from message"
   else
-    fail "Transcript __c" "found __c in output"
+    fail "Message __c" "found __c in output"
+  fi
+  # Should have HTML stripped
+  if ! echo "$CONTENT" | grep -q "<code>"; then
+    pass "HTML stripped from message"
+  else
+    fail "Message HTML" "found HTML in output"
   fi
 else
-  fail "Transcript extraction" "no output file created at $SAVE_DIR/last.txt"
-  fail "Last-only extraction" "skipped (no file)"
-  fail "Transcript __c" "skipped (no file)"
+  fail "Message extraction" "no output file created at $SAVE_DIR/last.txt"
+  fail "Salesforce __c" "skipped (no file)"
+  fail "HTML strip" "skipped (no file)"
 fi
 
 # --- Test: Atomic write (tmp file not left behind) ---
@@ -164,18 +154,18 @@ else
   fail "Atomic write" ".tmp file still exists"
 fi
 
-# --- Test: Missing session ID exits cleanly ---
+# --- Test: Missing message exits cleanly ---
 RESULT=$(echo '{}' | bash "$SCRIPT" 2>&1; echo "EXIT:$?")
 if echo "$RESULT" | grep -q "EXIT:0"; then
-  pass "Missing session ID exits cleanly"
+  pass "Missing message exits cleanly"
 else
-  fail "Missing session" "non-zero exit"
+  fail "Missing message" "non-zero exit"
 fi
 
-# --- Test: Missing transcript exits cleanly ---
-RESULT=$(echo '{"session_id":"nonexistent-id"}' | bash "$SCRIPT" 2>&1; echo "EXIT:$?")
+# --- Test: Empty input exits cleanly ---
+RESULT=$(echo '' | bash "$SCRIPT" 2>&1; echo "EXIT:$?")
 if echo "$RESULT" | grep -q "EXIT:0"; then
-  pass "Missing transcript exits cleanly"
+  pass "Empty input exits cleanly"
 else
-  fail "Missing transcript" "non-zero exit"
+  fail "Empty input" "non-zero exit"
 fi

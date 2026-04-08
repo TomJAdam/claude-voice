@@ -1,7 +1,7 @@
 #!/bin/bash
 # Called by the Claude Code Stop hook after every turn.
-# Extracts the last assistant text response, preprocesses it, and saves to a
-# session-specific directory under /tmp/claude-say-$PPID/.
+# Reads last_assistant_message from the hook's stdin payload, preprocesses it,
+# and saves to a session-specific directory under /tmp/claude-say-$PPID/.
 # PPID = the Claude Code process PID, shared by both hook and bash tool.
 # This is what makes /say fast, token-free, and clutter-free.
 # Note: responses are truncated to 5000 chars (~15 min of speech at 175 wpm).
@@ -9,13 +9,13 @@
 SESSION_DIR="/tmp/claude-say-${PPID}"
 mkdir -p "$SESSION_DIR"
 
-SESSION_ID=$(jq -r '.session_id' 2>/dev/null)
-TRANSCRIPT=$(find ~/.claude/projects -name "${SESSION_ID}.jsonl" 2>/dev/null | head -1)
+# Read the hook payload — contains last_assistant_message directly
+INPUT=$(cat 2>/dev/null) || exit 0
+MESSAGE=$(echo "$INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null)
 
-[ -z "$TRANSCRIPT" ] && exit 0
+[ -z "$MESSAGE" ] && exit 0
 
-tail -300 "$TRANSCRIPT" \
-  | jq -rs '[.[] | select(.type == "assistant") | select(any(.message.content[]?; .type == "text"))] | last | .message.content[] | select(.type == "text") | .text' 2>/dev/null \
+echo "$MESSAGE" \
   | head -c 5000 \
   | sed \
       -e 's/\[HIGH\]/High,/g' \
