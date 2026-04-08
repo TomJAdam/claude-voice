@@ -33,3 +33,33 @@ tail -300 "$TRANSCRIPT" \
       -e 's/_/ /g' \
   > "$SESSION_DIR/last.txt.tmp" 2>/dev/null \
   && mv "$SESSION_DIR/last.txt.tmp" "$SESSION_DIR/last.txt"
+
+# Auto-speak if the intercept hook flagged this turn
+if [ -f "$SESSION_DIR/auto-speak" ]; then
+  FLAGS=$(cat "$SESSION_DIR/auto-speak")
+  rm -f "$SESSION_DIR/auto-speak"
+
+  # Parse flags (e.g. "fast", "slow", "r 200", "voice Alex")
+  RATE=175
+  SAY_FLAGS=""
+  SKIP_NEXT=""
+  for word in $FLAGS; do
+    if [ -n "$SKIP_NEXT" ]; then
+      case "$SKIP_NEXT" in
+        rate)  RATE="$word" ;;
+        voice) SAY_FLAGS="$SAY_FLAGS -v $word" ;;
+      esac
+      SKIP_NEXT=""
+      continue
+    fi
+    case "$word" in
+      slow) RATE=130 ;; fast) RATE=250 ;; r) SKIP_NEXT="rate" ;; voice) SKIP_NEXT="voice" ;; *) ;;
+    esac
+  done
+
+  date +%s > "$SESSION_DIR/start.txt"
+  echo "$RATE" > "$SESSION_DIR/rate.txt"
+  rm -f "$SESSION_DIR/offset.txt"
+  cat "$SESSION_DIR/last.txt" | say -r $RATE $SAY_FLAGS > /dev/null 2>&1 &
+  disown
+fi

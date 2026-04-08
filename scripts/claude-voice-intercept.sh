@@ -9,6 +9,19 @@ INPUT=$(cat 2>/dev/null) || exit 0
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null) || exit 0
 [ -z "$PROMPT" ] && exit 0
 
+# Check for trailing /say (e.g. "explain this /say" or "explain this /say fast")
+# Sets a flag so the Stop hook auto-speaks the response, then lets the prompt through.
+SD="/tmp/claude-say-$PPID"
+case "$PROMPT" in
+  *\ /say\ *|*\ /say)
+    mkdir -p "$SD"
+    # Extract flags after /say (if any)
+    SAY_SUFFIX="${PROMPT##* /say}"
+    echo "$SAY_SUFFIX" > "$SD/auto-speak"
+    exit 0
+    ;;
+esac
+
 # Only handle /say and /stop commands — everything else passes through
 case "$PROMPT" in
   /say\ *) ARGS="${PROMPT#/say }" ;;
