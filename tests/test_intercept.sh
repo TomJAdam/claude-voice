@@ -201,4 +201,43 @@ else
   fail "Malformed JSON" "got: $RESULT"
 fi
 
+# --- Test: Trailing /say sets auto-speak flag ---
+rm -rf /tmp/claude-say-*/auto-speak 2>/dev/null
+echo '{"prompt":"explain this /say"}' | bash "$SCRIPT" 2>/dev/null
+if ls /tmp/claude-say-*/auto-speak > /dev/null 2>&1; then
+  pass "Trailing /say sets auto-speak flag"
+else
+  fail "Trailing /say" "no flag set"
+fi
+
+# --- Test: Trailing /say fast captures flags ---
+rm -rf /tmp/claude-say-*/auto-speak 2>/dev/null
+echo '{"prompt":"explain this /say fast"}' | bash "$SCRIPT" 2>/dev/null
+FLAG_CONTENT=$(cat /tmp/claude-say-*/auto-speak 2>/dev/null)
+if echo "$FLAG_CONTENT" | grep -q "fast"; then
+  pass "Trailing /say fast captures flag"
+else
+  fail "Trailing /say fast" "flag: '$FLAG_CONTENT'"
+fi
+
+# --- Test: Mid-sentence /say does NOT trigger (false positive) ---
+rm -rf /tmp/claude-say-*/auto-speak 2>/dev/null
+echo '{"prompt":"I want to /say something"}' | bash "$SCRIPT" 2>/dev/null
+if ! ls /tmp/claude-say-*/auto-speak > /dev/null 2>&1; then
+  pass "Mid-sentence /say does not trigger"
+else
+  fail "Mid-sentence /say" "false trigger"
+fi
+
+# --- Test: /say with non-flag words does NOT trigger ---
+rm -rf /tmp/claude-say-*/auto-speak 2>/dev/null
+echo '{"prompt":"can you /say hello world"}' | bash "$SCRIPT" 2>/dev/null
+if ! ls /tmp/claude-say-*/auto-speak > /dev/null 2>&1; then
+  pass "/say with non-flag words does not trigger"
+else
+  fail "/say non-flag" "false trigger"
+fi
+
+# Clean up
+rm -rf /tmp/claude-say-*/auto-speak 2>/dev/null
 export PATH="$ORIG_PATH"

@@ -21,7 +21,12 @@ preprocess() {
     -e 's/__c//g' \
     -e 's/__/  /g' \
     -e 's/\([A-Za-z_]\)<\([A-Za-z_][^>]*\)>/\1 of \2/g' \
+    -e 's/\([A-Za-z_]\)<\([A-Za-z_][^>]*\)>/\1 of \2/g' \
     -e 's/<[^>]*>//g' \
+    -e 's/\*\*\([^*]*\)\*\*/\1/g' \
+    -e 's/\*\([^*]*\)\*/\1/g' \
+    -e 's/^##* //g' \
+    -e 's/\[\([^]]*\)\]([^)]*)/ \1 /g' \
     -e 's/@//g' \
     -e 's/`//g' \
     -e 's/—/, /g' \
@@ -93,6 +98,47 @@ if [ "$RESULT" = "hello" ]; then
   pass "HTML tag stripping"
 else
   fail "HTML strip" "got: '$RESULT'"
+fi
+
+# --- Test: Nested generics ---
+RESULT=$(preprocess "Map<String, List<Integer>>")
+if [ "$RESULT" = "Map of String, List of Integer" ]; then
+  pass "Nested generics (Map<String, List<Integer>>)"
+else
+  fail "Nested generics" "got: '$RESULT'"
+fi
+
+# --- Test: Markdown bold ---
+RESULT=$(preprocess "**bold text**")
+if [ "$RESULT" = "bold text" ]; then
+  pass "Markdown bold stripped"
+else
+  fail "Markdown bold" "got: '$RESULT'"
+fi
+
+# --- Test: Markdown italic ---
+RESULT=$(preprocess "*italic text*")
+if [ "$RESULT" = "italic text" ]; then
+  pass "Markdown italic stripped"
+else
+  fail "Markdown italic" "got: '$RESULT'"
+fi
+
+# --- Test: Markdown header ---
+RESULT=$(preprocess "## Section Title")
+if [ "$RESULT" = "Section Title" ]; then
+  pass "Markdown header stripped"
+else
+  fail "Markdown header" "got: '$RESULT'"
+fi
+
+# --- Test: Markdown link ---
+RESULT=$(preprocess "[click here](https://example.com)")
+TRIMMED=$(echo "$RESULT" | xargs)
+if [ "$TRIMMED" = "click here" ]; then
+  pass "Markdown link (text kept, URL removed)"
+else
+  fail "Markdown link" "got: '$RESULT'"
 fi
 
 # --- Test: Backtick removal ---
