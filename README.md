@@ -109,7 +109,7 @@ Each session's cache is stored in `/tmp/claude-say-$PPID/` so multiple concurren
 |---|---|
 | `getUsersDaysOffMapStartingAt` | "get Users Days Off Map Starting At" |
 | `Complete_Day_Off__c` | "Complete Day Off" |
-| `List<Complete_Day_Off__c>` | "List" |
+| `List<Complete_Day_Off__c>` | "List of Complete Day Off" |
 | `calculatePauseExpiryWithinCompleteUserAvailability` | "calculate Pause Expiry Within Complete User Availability" |
 | `[HIGH]` | "High," |
 | `—` | natural pause |
@@ -123,4 +123,4 @@ This makes responses with Apex, Java, JavaScript, or any camelCase/snake_case co
 bash test.sh
 ```
 
-Runs 66 tests covering install/uninstall, text preprocessing, command behavior, and the intercept hook.
+Runs 68 tests covering install/uninstall, text preprocessing, command behavior, and the intercept hook.

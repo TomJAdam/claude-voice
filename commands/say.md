@@ -39,7 +39,8 @@ Flags combine freely: `full slow`, `voice Alex fast`, `again slow`, `resume fast
 ```bash
 SD=/tmp/claude-say-$PPID; mkdir -p $SD; echo "$TEXT" | sed \
   -e 's/\[HIGH\]/High,/g' -e 's/\[MEDIUM\]/Medium,/g' -e 's/\[LOW\]/Low,/g' \
-  -e 's/__c//g' -e 's/__/  /g' -e 's/<[^>]*>//g' \
+  -e 's/__c//g' -e 's/__/  /g' \
+  -e 's/\([A-Za-z_]\)<\([A-Za-z_][^>]*\)>/\1 of \2/g' -e 's/<[^>]*>//g' \
   -e 's/@//g' -e 's/`//g' -e 's/—/, /g' \
   -e 's/\([a-z]\)\([A-Z]\)/\1 \2/g' \
   -e 's/\([a-z]\)\([A-Z]\)/\1 \2/g' \

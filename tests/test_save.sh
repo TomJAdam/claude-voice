@@ -20,6 +20,7 @@ preprocess() {
     -e 's/\[LOW\]/Low,/g' \
     -e 's/__c//g' \
     -e 's/__/  /g' \
+    -e 's/\([A-Za-z_]\)<\([A-Za-z_][^>]*\)>/\1 of \2/g' \
     -e 's/<[^>]*>//g' \
     -e 's/@//g' \
     -e 's/`//g' \
@@ -70,7 +71,23 @@ else
   fail "snake_case" "got: '$RESULT'"
 fi
 
-# --- Test: HTML tag stripping ---
+# --- Test: Generic type to "of" ---
+RESULT=$(preprocess "List<String>")
+if [ "$RESULT" = "List of String" ]; then
+  pass "Generic type (List<String>)"
+else
+  fail "Generic type" "got: '$RESULT'"
+fi
+
+# --- Test: Generic type with Salesforce field ---
+RESULT=$(preprocess "List<Complete_Day_Off__c>")
+if [ "$RESULT" = "List of Complete Day Off" ]; then
+  pass "Generic type with Salesforce (List<Complete_Day_Off__c>)"
+else
+  fail "Generic Salesforce" "got: '$RESULT'"
+fi
+
+# --- Test: HTML tag stripping (still works) ---
 RESULT=$(preprocess "<code>hello</code>")
 if [ "$RESULT" = "hello" ]; then
   pass "HTML tag stripping"
