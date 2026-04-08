@@ -11,10 +11,12 @@ cp -f commands/say.md "$COMMANDS_DIR/say.md" 2>/dev/null || cp commands/say.md "
 cp -f commands/stop.md "$COMMANDS_DIR/stop.md" 2>/dev/null || cp commands/stop.md "$COMMANDS_DIR/stop.md"
 echo "  Commands installed."
 
-# Install save script
+# Install scripts
 cp -f scripts/claude-voice-save.sh "$HOME/.claude/claude-voice-save.sh" 2>/dev/null || cp scripts/claude-voice-save.sh "$HOME/.claude/claude-voice-save.sh"
+cp -f scripts/claude-voice-intercept.sh "$HOME/.claude/claude-voice-intercept.sh" 2>/dev/null || cp scripts/claude-voice-intercept.sh "$HOME/.claude/claude-voice-intercept.sh"
 chmod +x "$HOME/.claude/claude-voice-save.sh"
-echo "  Save script installed."
+chmod +x "$HOME/.claude/claude-voice-intercept.sh"
+echo "  Scripts installed."
 
 # Add Stop hook to settings.json
 if ! command -v jq &>/dev/null; then
@@ -23,30 +25,31 @@ if ! command -v jq &>/dev/null; then
   echo "  Install jq (brew install jq) then manually add this to ~/.claude/settings.json:"
   echo ""
   echo '  "hooks": {'
-  echo '    "Stop": [{'
-  echo '      "hooks": [{'
-  echo '        "type": "command",'
-  echo '        "command": "bash ~/.claude/claude-voice-save.sh"'
-  echo '      }]'
-  echo '    }]'
+  echo '    "Stop": [{"hooks": [{"type": "command", "command": "bash ~/.claude/claude-voice-save.sh"}]}],'
+  echo '    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bash ~/.claude/claude-voice-intercept.sh"}]}]'
   echo '  }'
   echo ""
 else
-  HOOK_CMD="bash ~/.claude/claude-voice-save.sh"
+  SAVE_CMD="bash ~/.claude/claude-voice-save.sh"
+  INTERCEPT_CMD="bash ~/.claude/claude-voice-intercept.sh"
 
   if [ ! -f "$SETTINGS" ]; then
-    # Create new settings with hook
-    jq -n --arg cmd "$HOOK_CMD" \
-      '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":$cmd}]}]}}' \
-      > "$SETTINGS"
+    jq -n --arg save "$SAVE_CMD" --arg intercept "$INTERCEPT_CMD" '{
+      "hooks": {
+        "Stop": [{"hooks":[{"type":"command","command":$save}]}],
+        "UserPromptSubmit": [{"hooks":[{"type":"command","command":$intercept}]}]
+      }
+    }' > "$SETTINGS"
   else
     # Remove any existing claude-voice hooks first, then add fresh
-    jq --arg cmd "$HOOK_CMD" '
+    jq --arg save "$SAVE_CMD" --arg intercept "$INTERCEPT_CMD" '
       .hooks.Stop = ([(.hooks.Stop // [])[] | select(.hooks[].command | contains("claude-voice") | not)]
-        + [{"hooks":[{"type":"command","command":$cmd}]}])
+        + [{"hooks":[{"type":"command","command":$save}]}])
+      | .hooks.UserPromptSubmit = ([(.hooks.UserPromptSubmit // [])[] | select(.hooks[].command | contains("claude-voice") | not)]
+        + [{"hooks":[{"type":"command","command":$intercept}]}])
     ' "$SETTINGS" > "$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
   fi
-  echo "  Stop hook added to settings.json."
+  echo "  Hooks added to settings.json."
 fi
 
 echo ""

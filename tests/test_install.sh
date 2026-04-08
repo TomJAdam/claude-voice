@@ -47,11 +47,26 @@ else
   fail "Hook async" "found async: $ASYNC"
 fi
 
+# --- Test: UserPromptSubmit hook installed ---
+INTERCEPT_COUNT=$(jq '.hooks.UserPromptSubmit | length' "$FAKE_HOME/.claude/settings.json")
+if [ "$INTERCEPT_COUNT" = "1" ]; then
+  pass "UserPromptSubmit hook installed"
+else
+  fail "UserPromptSubmit hook" "expected 1, got $INTERCEPT_COUNT"
+fi
+
 # --- Test: Save script is installed and executable ---
 if [ -x "$FAKE_HOME/.claude/claude-voice-save.sh" ]; then
   pass "Save script installed and executable"
 else
   fail "Save script" "not found or not executable"
+fi
+
+# --- Test: Intercept script is installed and executable ---
+if [ -x "$FAKE_HOME/.claude/claude-voice-intercept.sh" ]; then
+  pass "Intercept script installed and executable"
+else
+  fail "Intercept script" "not found or not executable"
 fi
 
 # --- Test: Command files installed ---
@@ -64,11 +79,12 @@ fi
 # --- Test: Re-install deduplicates hooks ---
 export HOME="$FAKE_HOME"
 (cd "$REPO_DIR" && bash install.sh) > /dev/null 2>&1
-HOOK_COUNT=$(jq '.hooks.Stop | length' "$FAKE_HOME/.claude/settings.json")
-if [ "$HOOK_COUNT" = "1" ]; then
-  pass "Re-install deduplicates (still 1 hook)"
+STOP_COUNT=$(jq '.hooks.Stop | length' "$FAKE_HOME/.claude/settings.json")
+INTERCEPT_COUNT=$(jq '.hooks.UserPromptSubmit | length' "$FAKE_HOME/.claude/settings.json")
+if [ "$STOP_COUNT" = "1" ] && [ "$INTERCEPT_COUNT" = "1" ]; then
+  pass "Re-install deduplicates (1 Stop + 1 UserPromptSubmit)"
 else
-  fail "Re-install dedupe" "expected 1, got $HOOK_COUNT"
+  fail "Re-install dedupe" "Stop=$STOP_COUNT, UserPromptSubmit=$INTERCEPT_COUNT"
 fi
 
 # --- Test: Preserves other hooks ---
