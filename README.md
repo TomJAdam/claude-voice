@@ -10,22 +10,6 @@ Text-to-speech commands for [Claude Code](https://claude.ai/code). Reads Claude'
 
 ---
 
-## ⚠️ IMPORTANT: Install the Stop Hook
-
-**Without the Stop hook, `/say` works but is slow, expensive, and clutters the chat.**
-
-The Stop hook runs a lightweight script after every Claude turn that pre-saves and pre-processes the last response to `/tmp/claude-say-last.txt`. This means `/say` can read that file directly instead of scanning the entire conversation.
-
-| | Without hook | With hook |
-|---|---|---|
-| Speed | Slow (Claude scans conversation) | Instant |
-| Token cost | ~1,000–3,000 tokens per `/say` | 0 tokens |
-| Chat output | Full bash pipeline shown | Clean status line only |
-
-The `install.sh` script adds the hook automatically. **Do not skip it.**
-
----
-
 ## Install
 
 ```bash
@@ -34,7 +18,7 @@ cd claude-voice
 ./install.sh
 ```
 
-Then **restart Claude Code** (or open `/hooks`) to activate the Stop hook.
+Then **restart Claude Code** to activate the hooks.
 
 ## Uninstall
 
@@ -54,9 +38,19 @@ Then **restart Claude Code** (or open `/hooks`) to activate the Stop hook.
 | `/say full` | Read everything since your last message |
 | `/say summary` | Speak a 2–3 sentence summary |
 | `/say code` | Speak only code blocks |
-| `/say again` | Repeat the last spoken text |
+| `/say again` or `/say repeat` | Repeat the last spoken text |
 | `/say pause` | Pause at current position |
 | `/say resume` | Resume from where it paused |
+
+### Inline `/say`
+
+Append `/say` to any prompt to automatically hear the response read aloud:
+
+```
+explain quantum entanglement /say
+what does this function do /say fast
+summarize this PR /say slow
+```
 
 ### Speed flags
 
@@ -93,11 +87,19 @@ Immediately kills any active `say` process.
 
 ## How it works
 
-A Claude Code Stop hook runs `claude-voice-save.sh` silently after every turn. The script reads the session transcript, extracts the last assistant text response, applies preprocessing (camelCase splitting, Salesforce `__c` stripping, markdown cleanup), and saves it to `/tmp/claude-say-last.txt`.
+claude-voice uses two Claude Code hooks:
 
-When you type `/say`, Claude reads from that file and pipes it to `say` — zero conversation scanning, zero extra tokens.
+**UserPromptSubmit hook** (`claude-voice-intercept.sh`) — Intercepts `/say`, `/stop`, and inline `/say` prompts before they reach the LLM. Basic playback, pause, resume, speed/voice flags, and stop are handled entirely in shell — zero tokens, instant response. Only `/say full`, `/say summary`, and `/say code` pass through to Claude since they need LLM processing. For inline `/say`, the hook sets a flag and lets the prompt through.
 
-The `full`, `code`, and `summary` flags still use Claude for extraction since they require understanding of conversation context.
+**Stop hook** (`claude-voice-save.sh`) — Runs after every Claude turn. Reads `last_assistant_message` from the hook payload, applies text preprocessing, and saves it to a session-specific cache. If an inline `/say` flag was set, it automatically speaks the response.
+
+Each session's cache is stored in `/tmp/claude-say-$PPID/` so multiple concurrent sessions don't interfere with each other.
+
+| | Without hooks | With hooks |
+|---|---|---|
+| Speed | Slow (LLM round-trip) | Instant |
+| Token cost | ~300 tokens per `/say` | 0 tokens |
+| Concurrent sessions | Shared cache (conflicts) | Isolated per session |
 
 ## Text preprocessing
 
@@ -114,3 +116,11 @@ The `full`, `code`, and `summary` flags still use Claude for extraction since th
 | backticks, `@param` | cleaned up |
 
 This makes responses with Apex, Java, JavaScript, or any camelCase/snake_case code significantly more listenable.
+
+## Tests
+
+```bash
+bash test.sh
+```
+
+Runs 66 tests covering install/uninstall, text preprocessing, command behavior, and the intercept hook.
