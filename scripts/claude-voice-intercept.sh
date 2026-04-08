@@ -77,7 +77,8 @@ case "$MODE" in
     OFFSET=$(cat "$SD/offset.txt" 2>/dev/null || echo 0)
     date +%s > "$SD/start.txt"
     echo "$RATE" > "$SD/rate.txt"
-    awk -v skip="$OFFSET" 'BEGIN{w=0}{for(i=1;i<=NF;i++){if(w>=skip)printf "%s ",$i; w++}}END{print ""}' "$SD/last.txt" | say $SAY_FLAGS &
+    awk -v skip="$OFFSET" 'BEGIN{w=0}{for(i=1;i<=NF;i++){if(w>=skip)printf "%s ",$i; w++}}END{print ""}' "$SD/last.txt" | say $SAY_FLAGS > /dev/null 2>&1 &
+    disown
     block "Resuming."
     ;;
   *)
@@ -88,7 +89,8 @@ case "$MODE" in
     date +%s > "$SD/start.txt"
     echo "$RATE" > "$SD/rate.txt"
     rm -f "$SD/offset.txt"
-    cat "$SD/last.txt" | say $SAY_FLAGS &
+    cat "$SD/last.txt" | say $SAY_FLAGS > /dev/null 2>&1 &
+    disown
     block "Speaking."
     ;;
 esac
